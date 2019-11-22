@@ -39,7 +39,10 @@ parseDefn fp = either (const []) pure . parse factorWord fp
 type Parser = Parsec Void Text
 
 symbol :: Text -> Parser Text
-symbol s = space *> L.symbol space1 s
+symbol s = L.symbol space1 s
+
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme space1
 
 reserveds :: [String]
 reserveds = [":", "::", "(", "--", ")"]
@@ -53,27 +56,24 @@ nonSpace = do
 
 stackEffect :: Parser StackEffect
 stackEffect = do
-  chunk "("
-  space1
-  ins <- (try stackEffectVar <|> try regularVar) `sepEndBy` space1
-  chunk "--"
-  space1
+  symbol "("
+  ins <- many (try stackEffectVar <|> try regularVar)
+  symbol "--"
   outs <- (try stackEffectVar <|> try regularVar) `sepEndBy` space1
-  chunk ")"
+  symbol ")"
   pure $ StackEffect ins outs
   where
-    regularVar = (\var -> (var, Nothing)) <$> nonSpace
-    stackEffectVar = do
-      var <- nonSpace
-      space1
+    regularVar = lexeme $ 
+      (\var -> (var, Nothing)) <$> nonSpace
+    stackEffectVar = lexeme $ do
+      var <- lexeme nonSpace
       se <- stackEffect
       pure (var, Just se)
 
 factorWord :: Parser FactorWord
 factorWord = do
   space
-  try (chunk ":" *> space1) <|> (chunk "::" *> space1)
-  name <- nonSpace
-  space1
+  try (symbol ":") <|> symbol "::"
+  name <- lexeme nonSpace
   se <- stackEffect
   pure $ FactorWord name se
