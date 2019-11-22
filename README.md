@@ -17,13 +17,13 @@ get a list of commands.
 
 # TODOs
 * Change `Main.hs` to actually use an argparser (`optparse-applicative`, perhaps)
-  [ ] Generate DB
-  [ ] Read from DB or directory
-  [x] Min, max number of input stack effects
-  [x] Input stack effect query
-  [x] Min, max number of output stack effects
-  [x] Output stack effect query
-  [x] Function name query
-  [x] Look at infixes
+  - [ ] Generate DB
+  - [ ] Read from DB or directory
+  - [ ] Min, max number of input stack effects
+  - [x] Input stack effect query
+  - [x] Min, max number of output stack effects
+  - [x] Output stack effect query
+  - [x] Function name query
+  - [x] Look at infixes
 * Serialize to a better format
 * Improve search capabilities and speed
