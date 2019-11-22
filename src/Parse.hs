@@ -11,6 +11,7 @@ import Data.Void
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.Text.Encoding.Error as T
 import qualified Data.Text.IO as T
 import qualified Data.ByteString as BS
 import Control.Monad.Combinators
@@ -27,7 +28,7 @@ makeDB dir = do
   traverse indexFile paths
 
 indexFile :: FilePath -> IO (FilePath, [FactorWord])
-indexFile fp = (fp,) . parseDefns fp . T.decodeUtf8 <$> BS.readFile fp
+indexFile fp = (fp,) . parseDefns fp . T.decodeUtf8With T.lenientDecode <$> BS.readFile fp
 
 parseDefns :: String -> Text -> [FactorWord]
 parseDefns fp = T.lines >=> parseDefn fp
