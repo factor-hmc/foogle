@@ -19,7 +19,7 @@ get a list of commands.
 * Change `Main.hs` to actually use an argparser (`optparse-applicative`, perhaps)
   - [ ] Generate DB
   - [ ] Read from DB or directory
-  - [ ] Min, max number of input stack effects
+  - [x] Min, max number of input stack effects
   - [x] Input stack effect query
   - [x] Min, max number of output stack effects
   - [x] Output stack effect query
