@@ -32,6 +32,7 @@ library:
   - filemanip
   - text
   - bytestring
+  - optparse-applicative
 
 executables:
   foogle-exe:
@@ -44,6 +45,7 @@ executables:
     dependencies:
     - foogle
     - text
+    - optparse-applicative
 
 tests:
   foogle-test:
