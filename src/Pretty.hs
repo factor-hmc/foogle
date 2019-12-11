@@ -41,9 +41,7 @@ renderEffect' color ((var, eff):vs) = do
   renderHighlighted color var
   case eff of
     Just e -> do
-      -- I think this is used to denote that it has an effect associated with it,
-      -- but maybe it's just part of the name
-      TIO.putStr ": "
+      TIO.putStr " "
       renderEffect e
     Nothing -> pure ()
   renderEffect' color vs

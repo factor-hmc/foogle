@@ -23,7 +23,7 @@ run opts = do
 printModule :: (FilePath, [FactorWord Highlighted]) -> IO ()
 printModule (fp, ws) = do
   putStrLn $ fp <> ": "
-  traverse_ (\w -> putStrLn "  " *> renderWord w *> putStr "\n") ws
+  traverse_ (\w -> putStr "  " *> renderWord w *> putStr "\n") ws
 
 -- queryVar :: IO ()
 -- queryVar = do
