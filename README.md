@@ -25,7 +25,7 @@ get a list of commands.
   - [x] Output stack effect query
   - [x] Function name query
   - [x] Look at infixes
-* Improve the parser (breaks for `map` in `/core/sequences/`
+* Fix searching for words that have nested stack effects
 * Serialize to a better format
 * Improve search capabilities and speed
 * Clean up code
