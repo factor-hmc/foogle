@@ -1,6 +1,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE ApplicativeDo #-}
 module Types where
 
 import Data.Text (Text(..))
@@ -33,22 +34,22 @@ instance Foldable StackEffect where
       foldTuple (a, Nothing) = f a
       foldTuple (a, Just rc) = f a <> foldMap f rc
 
--- This probably can be sequenceA but I can't be bothered to wrap my head around how to do it (actually it might just work if you use ApplicativeDo)
-fromMaybeSE :: StackEffect (Maybe a) -> Maybe (StackEffect a)
-fromMaybeSE (StackEffect ins outs) = do
-  ins'  <- fromMaybeEff ins
-  outs' <- fromMaybeEff outs
-  pure $ StackEffect ins' outs'
-    where
-      fromMaybeEff [] = Just []
-      fromMaybeEff ((a, eff):es) = do
-        a'  <- a
-        es' <- fromMaybeEff es
-        case eff of
-          Nothing -> pure $ (a', Nothing) : es'
-          Just e  -> do
-            e' <- fromMaybeSE e
-            pure $ (a', Just e') : es'
+instance Traversable StackEffect where
+  sequenceA (StackEffect ins outs) = do
+    ins'  <- sequenceA' ins
+    outs' <- sequenceA' outs
+    pure $ StackEffect ins' outs'
+      where
+        sequenceA' [] = pure []
+        sequenceA' ((a, Nothing):es) = do
+          a'  <- a
+          es' <- sequenceA' es
+          pure $ (a', Nothing) : es'
+        sequenceA' ((a, Just eff):es) = do
+          a'  <- a
+          es' <- sequenceA' es
+          e' <- sequenceA eff
+          pure $ (a', Just e') : es'
 
 instance Applicative StackEffect where
   pure x = StackEffect (repeat (x, Just (pure x))) (repeat (x, Just (pure x)))

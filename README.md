@@ -27,3 +27,4 @@ get a list of commands.
   [x] Look at infixes
 * Serialize to a better format
 * Improve search capabilities and speed
+* Clean up code

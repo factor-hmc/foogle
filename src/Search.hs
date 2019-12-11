@@ -39,19 +39,6 @@ match False needle haystack =
     len     = T.length needle - 1
     matches = (,) <*> (+ len) <$> T.indices needle haystack
 
-matchHighlighted :: Bool -> Text -> Highlighted -> Maybe Highlighted
-matchHighlighted strict needle (Highlighted haystack highlights) = do
-  highlights' <- match strict needle haystack
-  Just $ Highlighted haystack (highlights <> highlights')
-
-matchBase :: Bool -> Text -> Text -> Maybe Highlighted
-matchBase strict needle haystack = Highlighted haystack <$> match strict needle haystack
-
---matchNeedles :: Bool -> [Text] -> Text -> Maybe Highlighted
---matchNeedles strict needles haystack = Highlighted haystack <$> highlights
---  where
---    highlights = foldMap (\needle -> match strict haystack needle) needles
-
 matchQuery :: Query -> SimpleWord -> Maybe (FactorWord Highlighted)
 matchQuery Query{..} (FactorWord name stackEffect) = do
   matchedIn  <- matchSE seIn inQueries
@@ -73,7 +60,7 @@ matchQuery Query{..} (FactorWord name stackEffect) = do
     matchSE se queries = do
       let matchedQs = [match strict q <$> se | q <- queries]
       guard $ all (any isJust) matchedQs
-      fromMaybeSE $ foldr1 (\se1 se2 -> (<>) <$> se1 <*> se2) matchedQs
+      sequence $ foldr1 (\se1 se2 -> (<>) <$> se1 <*> se2) matchedQs
 
 wordsMatchingQuery :: Query -> [(FilePath, [SimpleWord])] -> [(FilePath, [FactorWord Highlighted])]
 wordsMatchingQuery q db = do 
@@ -81,46 +68,3 @@ wordsMatchingQuery q db = do
   let matching = catMaybes $ map (matchQuery q) ws
   guard $ not (null matching)
   pure (fp, matching)
-      
---matchQuery Query{..} word = case (inQueries, outQueries) of
---  (inQ:inQs, outQs) -> do
---    let start = matchBase strict inQ <$> word
---    guard (any isJust start)
---  ([], outQ:outQs)  -> undefined
---  ([], []) -> Just $ fmap (flip Highlighted mempty) word
-
---wordsMatchingEffect 
---  :: (FactorWord -> [Text])
---  -> Bool 
---  -> [Text] 
---  -> Maybe Int 
---  -> Maybe Int 
---  -> [FactorWord] 
---  -> [FactorWord]
---wordsMatchingEffect getEffect strict qs minLen maxLen ws = do
---  w <- ws
---  let eff = getEffect w
---  let len = length eff
---  guard $ maybe (const True) (<=) minLen len
---  guard $ maybe (const True) (>=) maxLen len
---  guard $ match strict qs eff
---  pure w
---
---wordsMatchingInEffect = wordsMatchingEffect effectInput
---wordsMatchingOutEffect = wordsMatchingEffect effectOutput
---
---wordsMatchingName :: Bool -> Text -> [FactorWord] -> [FactorWord]
---wordsMatchingName True name = filter ((name ==) . getName)
---wordsMatchingName False name = filter ((name `T.isInfixOf`) . getName)
---
---wordsMatchingQuery 
---  :: Query
---  -> [(FilePath, [FactorWord])] 
---  -> [(FilePath, [FactorWord])]
---wordsMatchingQuery Query{..} = filter (not . null . snd) . map wordsMatchingQuery'
---  where
---    wordsMatchingQuery' (fp, ws) = (fp, 
---        wordsMatchingInEffect strict inQueries inMin inMax
---      . wordsMatchingOutEffect strict outQueries outMin outMax
---      . maybe id (wordsMatchingName strict) wordName $
---      ws)
