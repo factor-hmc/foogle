@@ -59,15 +59,15 @@ stackEffect = do
   symbol "("
   ins <- many (try stackEffectVar <|> try regularVar)
   symbol "--"
-  outs <- (try stackEffectVar <|> try regularVar) `sepEndBy` space1
-  symbol ")"
+  outs <- many (try stackEffectVar <|> try regularVar)
+  -- Doesn't have to have a space after it!
+  chunk ")"
   pure $ StackEffect ins outs
   where
-    regularVar = lexeme $ 
-      (\var -> (var, Nothing)) <$> nonSpace
-    stackEffectVar = lexeme $ do
+    regularVar = (, Nothing) <$> lexeme nonSpace
+    stackEffectVar = do
       var <- lexeme nonSpace
-      se <- stackEffect
+      se <- lexeme stackEffect
       pure (var, Just se)
 
 factorWord :: Parser SimpleWord
@@ -76,4 +76,5 @@ factorWord = do
   try (symbol ":") <|> symbol "::"
   name <- lexeme nonSpace
   se <- stackEffect
+  space
   pure $ FactorWord name se
