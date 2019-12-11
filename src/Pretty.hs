@@ -28,21 +28,23 @@ renderWord (FactorWord name effect) = do
 
 renderEffect :: HighlightedEffect -> IO ()
 renderEffect (StackEffect ins outs) = do
-  TIO.putStr "( "
+  TIO.putStr "("
   renderEffect' Red ins
-  TIO.putStr " -- "
+  TIO.putStr " --"
   renderEffect' Red outs
   TIO.putStr " )"
 
 renderEffect' :: Color -> [(Highlighted, Maybe HighlightedEffect)] -> IO ()
 renderEffect' _ [] = pure ()
 renderEffect' color ((var, eff):vs) = do
+  TIO.putStr " "
   renderHighlighted color var
-  -- TIO.putStr " "
   case eff of
     Just e -> do
+      -- I think this is used to denote that it has an effect associated with it,
+      -- but maybe it's just part of the name
+      TIO.putStr ": "
       renderEffect e
-      -- TIO.putStr " "
     Nothing -> pure ()
   renderEffect' color vs
 

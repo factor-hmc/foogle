@@ -11,21 +11,6 @@ import qualified Data.Text.Internal.Search as T
 import Data.Maybe
 import Control.Monad (guard, foldM)
 
-effectInput' :: SimpleWord -> [(Text, Maybe SimpleEffect)]
-effectInput' (FactorWord _ (StackEffect ins _)) = ins
-
-effectOutput' :: SimpleWord -> [(Text, Maybe SimpleEffect)]
-effectOutput' (FactorWord _ (StackEffect _ outs)) = outs
-
-effectInput :: SimpleWord -> [Text]
-effectInput = map fst . effectInput'
-
-effectOutput :: SimpleWord -> [Text]
-effectOutput = map fst . effectOutput'
-
-getName :: SimpleWord -> Text
-getName (FactorWord n _) = n
-
 -- The boolean indicates whether the match is strict
 match :: Bool -> Text -> Text -> Maybe Highlights
 match True needle haystack
@@ -41,6 +26,10 @@ match False needle haystack =
 
 matchQuery :: Query -> SimpleWord -> Maybe (FactorWord Highlighted)
 matchQuery Query{..} (FactorWord name stackEffect) = do
+  guard $ maybe True (insLength >=) inMin
+  guard $ maybe True (insLength <=) inMax
+  guard $ maybe True (outsLength >=) outMin
+  guard $ maybe True (outsLength <=) outMax
   matchedIn  <- matchSE seIn inQueries
   matchedOut <- matchSE seOut outQueries
   let newIns  = getInEffects (Highlighted <$> seIn <*> matchedIn)
@@ -53,6 +42,8 @@ matchQuery Query{..} (FactorWord name stackEffect) = do
                     pure $ Highlighted name nameHighlights
   pure $ FactorWord matchedName newSE
   where
+    insLength  = length . getInEffects $ stackEffect
+    outsLength = length . getOutEffects $ stackEffect
     seIn = StackEffect (getInEffects stackEffect) []
     seOut = StackEffect [] (getOutEffects stackEffect)
     matchSE :: SimpleEffect -> [Text] -> Maybe (StackEffect Highlights)
