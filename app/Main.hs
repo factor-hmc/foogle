@@ -5,6 +5,7 @@ import Parse
 import Types
 import Search
 import Argparse
+import Pretty
 import Data.Foldable (traverse_)
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -13,16 +14,16 @@ import Options.Applicative (execParser)
 main :: IO ()
 main = execParser optParser >>= run
 
-run :: Options -> IO ()
+run :: Query -> IO ()
 run opts = do
   db <- makeDB (fileName opts)
   let ws = wordsMatchingQuery opts db
   traverse_ printModule ws
 
-printModule :: (FilePath, [FactorWord]) -> IO ()
+printModule :: (FilePath, [FactorWord Highlighted]) -> IO ()
 printModule (fp, ws) = do
   putStrLn $ fp <> ": "
-  traverse_ (T.putStrLn . ("  " <>) . prettyWord) ws
+  traverse_ (\w -> putStrLn "  " *> renderWord w *> putStr "\n") ws
 
 -- queryVar :: IO ()
 -- queryVar = do

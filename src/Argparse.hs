@@ -1,22 +1,10 @@
 module Argparse where
 
+import Types
 import Text.Read (readMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Options.Applicative
-
-data Options
-  = Options
-  { inMin      :: Maybe Int -- ^ The minimum number of elements in the input of a stack effect
-  , inMax      :: Maybe Int -- ^ The maximum number of elements in the input of a stack effect
-  , inQueries  :: [Text] -- ^ The queries for the input stack effect (unordered)
-  , outMin     :: Maybe Int -- ^ The minimum number of elements in the output of a stack effect
-  , outMax     :: Maybe Int -- ^ The maximum number of elements in the output of a stack effect
-  , outQueries :: [Text] -- ^ The queries for the output stack effect (unordered)
-  , wordName   :: Maybe Text -- ^ The name of the word
-  , strict     :: Bool -- ^ Strictly match the queries?
-  , fileName   :: FilePath -- ^ Name of the file to index
-  }
 
 
 -- There are things going on here that really probably shouldn't be...
@@ -38,8 +26,8 @@ queries = maybeReader queries'
     queries' :: String -> Maybe [Text]
     queries' = Just . pure . T.pack
 
-options :: Parser Options
-options = Options
+options :: Parser Query
+options = Query
         <$> option maybeParser
             ( long "inMin"
            <> help "Minimum number of inputs to the word"
@@ -80,10 +68,10 @@ options = Options
            <> short 's'
            <> help "Strictly match inputs")
         <*> strArgument
-            ( metavar "FILE"
-           <> help "Filename to index")
+            ( metavar "PATH"
+           <> help "Filename or directory to index")
 
-optParser :: ParserInfo Options
+optParser :: ParserInfo Query
 optParser = info (options <**> helper)
             ( fullDesc
            <> progDesc "Search for words in Factor"

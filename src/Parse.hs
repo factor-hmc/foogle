@@ -22,18 +22,18 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Types
 
-makeDB :: String -> IO [(FilePath, [FactorWord])]
+makeDB :: String -> IO [(FilePath, [SimpleWord])]
 makeDB dir = do
   paths <- F.find F.always (F.extension F.==? ".factor") dir
   traverse indexFile paths
 
-indexFile :: FilePath -> IO (FilePath, [FactorWord])
+indexFile :: FilePath -> IO (FilePath, [SimpleWord])
 indexFile fp = (fp,) . parseDefns fp . T.decodeUtf8With T.lenientDecode <$> BS.readFile fp
 
-parseDefns :: String -> Text -> [FactorWord]
+parseDefns :: String -> Text -> [SimpleWord]
 parseDefns fp = T.lines >=> parseDefn fp
 
-parseDefn :: String -> Text -> [FactorWord]
+parseDefn :: String -> Text -> [SimpleWord]
 parseDefn fp = either (const []) pure . parse factorWord fp
 
 type Parser = Parsec Void Text
@@ -54,7 +54,7 @@ nonSpace = do
     then mzero
     else pure str
 
-stackEffect :: Parser StackEffect
+stackEffect :: Parser SimpleEffect
 stackEffect = do
   symbol "("
   ins <- many (try stackEffectVar <|> try regularVar)
@@ -70,7 +70,7 @@ stackEffect = do
       se <- stackEffect
       pure (var, Just se)
 
-factorWord :: Parser FactorWord
+factorWord :: Parser SimpleWord
 factorWord = do
   space
   try (symbol ":") <|> symbol "::"

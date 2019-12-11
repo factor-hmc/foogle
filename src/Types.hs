@@ -1,27 +1,109 @@
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveFunctor #-}
 module Types where
 
-import Data.Text
+import Data.Text (Text(..))
+import qualified Data.Text as T
 
-data FactorWord
+data FactorWord a
   = FactorWord
-      Text -- ^ The name of the word
-      StackEffect -- ^ The stack effect of the word
-  deriving (Read, Show, Eq)
+      a              -- ^ The name of the word
+      (StackEffect a)-- ^ The stack effect of the word
+  deriving (Read, Show, Eq, Functor)
 
-data StackEffect 
+data StackEffect a
   = StackEffect 
-      [(Text, Maybe StackEffect)] -- ^ The input stack variables
-      [(Text, Maybe StackEffect)] -- ^ The output stack variables
-  deriving (Read, Show, Eq)
+      [(a, Maybe (StackEffect a))] -- ^ The input stack variables
+      [(a, Maybe (StackEffect a))] -- ^ The output stack variables
+  deriving (Read, Show, Eq, Functor)
 
-prettyWord :: FactorWord -> Text
-prettyWord (FactorWord name effect) = name <> " " <> prettyEffect effect
+getInEffects :: StackEffect a -> [(a, Maybe (StackEffect a))]
+getInEffects (StackEffect ins _) = ins
 
-prettyEffect :: StackEffect -> Text
-prettyEffect (StackEffect ins outs) = "( " <> prettyEffect' ins <> " -- " <> prettyEffect' outs <> " )"
+getOutEffects :: StackEffect a -> [(a, Maybe (StackEffect a))]
+getOutEffects (StackEffect _ outs) = outs
 
-prettyEffect' :: [(Text, Maybe StackEffect)] -> Text
-prettyEffect' [] = ""
-prettyEffect' ((var, Just eff):vs) = var <> " " <> prettyEffect eff <> " " <> prettyEffect' vs
-prettyEffect' ((var, Nothing):vs)  = var <> " " <> prettyEffect' vs
+instance Foldable FactorWord where
+  foldMap f (FactorWord name se) = foldMap f se
+
+instance Foldable StackEffect where
+  foldMap f (StackEffect ins outs) = foldMap foldTuple ins <> foldMap foldTuple outs
+    where
+      foldTuple (a, Nothing) = f a
+      foldTuple (a, Just rc) = f a <> foldMap f rc
+
+-- This probably can be sequenceA but I can't be bothered to wrap my head around how to do it (actually it might just work if you use ApplicativeDo)
+fromMaybeSE :: StackEffect (Maybe a) -> Maybe (StackEffect a)
+fromMaybeSE (StackEffect ins outs) = do
+  ins'  <- fromMaybeEff ins
+  outs' <- fromMaybeEff outs
+  pure $ StackEffect ins' outs'
+    where
+      fromMaybeEff [] = Just []
+      fromMaybeEff ((a, eff):es) = do
+        a'  <- a
+        es' <- fromMaybeEff es
+        case eff of
+          Nothing -> pure $ (a', Nothing) : es'
+          Just e  -> do
+            e' <- fromMaybeSE e
+            pure $ (a', Just e') : es'
+
+instance Applicative StackEffect where
+  pure x = StackEffect (repeat (x, Just (pure x))) (repeat (x, Just (pure x)))
+  (StackEffect fs gs) <*> (StackEffect as bs) = 
+    StackEffect (ap fs as) (ap gs bs)
+      where
+        ap funcs list = zipWith combine funcs list
+        combine func val = case (func, val) of
+          ((f, Just fSE), (a, Just aSE)) -> (f a, Just $ fSE <*> aSE)
+          ((f, _), (a, _))               -> (f a, Nothing)
+
+type SimpleWord   = FactorWord Text
+type SimpleEffect = StackEffect Text
+
+type HighlightedWord = FactorWord Highlighted
+type HighlightedEffect= StackEffect Highlighted
+
+-- | Datatype for output to terminal
+data Highlighted
+  = Highlighted 
+      Text        -- ^ The highlighted text
+      Highlights  -- ^ Locations of the highlights
+  deriving (Show, Eq)
+
+-- | Locations of the highlights in a string, in order
+newtype Highlights
+  = Highlights { getHighlights :: [(Int, Int)]}
+  deriving (Show, Eq)
+
+instance Semigroup Highlights where
+  (Highlights []) <> (Highlights h2s) = Highlights h2s
+  (Highlights h1s) <> (Highlights []) = Highlights h1s
+  (Highlights ((x1,y1):h1s)) <> (Highlights ((x2,y2):h2s)) =
+       -- The two highlights intersect and can be combined
+    if | intersects x1 y1 x2 y2 -> Highlights ((min x1 x2, max y1 y2):h1s) <> Highlights h2s
+       -- (x1, y1) is strictly behind (x2, y2)
+       | y1 < x2                -> Highlights $ (x1, y1) : (x2, y2) : getHighlights (Highlights h1s <> Highlights h2s)
+       -- (x2, y2) is strictly behind (x1, y1)
+       | otherwise              -> Highlights $ (x2, y2) : (x1, y1) : getHighlights (Highlights h1s <> Highlights h2s)
+    where
+      intersects x1 y1 x2 y2 = x1 <= y2 && x2 <= y1 || x2 <= y1 && x1 <= y2
+
+instance Monoid Highlights where
+  mempty  = Highlights []
+  mappend = (<>)
+
+data Query
+  = Query
+  { inMin      :: Maybe Int -- ^ The minimum number of elements in the input of a stack effect
+  , inMax      :: Maybe Int -- ^ The maximum number of elements in the input of a stack effect
+  , inQueries  :: [Text] -- ^ The queries for the input stack effect (unordered)
+  , outMin     :: Maybe Int -- ^ The minimum number of elements in the output of a stack effect
+  , outMax     :: Maybe Int -- ^ The maximum number of elements in the output of a stack effect
+  , outQueries :: [Text] -- ^ The queries for the output stack effect (unordered)
+  , wordName   :: Maybe Text -- ^ The name of the word
+  , strict     :: Bool -- ^ Strictly match the queries?
+  , fileName   :: FilePath -- ^ Name of the file to index
+  }

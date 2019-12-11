@@ -33,6 +33,7 @@ library:
   - text
   - bytestring
   - optparse-applicative
+  - ansi-terminal
 
 executables:
   foogle-exe:
