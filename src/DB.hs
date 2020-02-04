@@ -33,10 +33,10 @@ data Effect
     , effTerminated :: Bool
     -- ^ Whether the stack effect is guaranteed to throw an error
     -- or exception (in which case 'effOut' is ignored
-    , effInVar      :: [EffRowVar]
-    -- ^ The input row polymorphic variables
-    , effOutVar     :: [EffRowVar]
-    -- ^ The output row polymorphic variables
+    , effInVar      :: Maybe EffRowVar
+    -- ^ The input row polymorphic variable (or 'Nothing', if there are none)
+    , effOutVar     :: Maybe EffRowVar
+    -- ^ The output row polymorphic variable (or 'Nothing', if there are none)
     }
     deriving (Show)
 
@@ -45,10 +45,14 @@ data FactorWord
   = FactorWord
     { wordName :: Text
     -- ^ The name of the word
-    , wordEff  :: Effect
+    , wordEff  :: Maybe Effect
     -- ^ The stack effect of the word
     }
     deriving (Show)
+
+
+-- !! The FromJSON instances here are pretty brittle !!
+-- They assume that the data is well-formed per how we're serializing from Factor.
 
 instance FromJSON EffVar where
   parseJSON o = asum
@@ -68,16 +72,26 @@ instance FromJSON Effect where
     where
       parseEffVar field = asum
       parseRowVar o field = asum
-        -- either we can parse it as a list of row vars
+        -- either we can parse it as a row var
         [ o .: field
         -- or it's False
         , do b <- o .: field
              guard (b == False)
-             pure []
+             pure Nothing
+        -- it shouldn't be anything else, and we therefore won't be lenient here.
+        -- if the parser breaks, it could be because of this.
         ]
 
 instance FromJSON FactorWord where
   parseJSON = withObject "factor word" $ \o -> do
     wordName <- o .: "name"
-    wordEff  <- o .: "effect"
+    wordEff  <- asum
+      -- either we can parse it as an effect
+      [ o .: "effect"
+      -- or it's False
+      , do b <- o .: "effect"
+           guard (b == False)
+           pure Nothing
+      -- again, this is pretty brittle
+      ]
     pure FactorWord{..}
