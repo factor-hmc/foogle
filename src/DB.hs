@@ -6,6 +6,7 @@ module DB where
 import Data.Aeson
 import Data.Foldable (asum)
 import Data.Text (Text(..))
+import qualified Data.Text as T
 import Control.Monad (guard)
 
 -- | Datatype representing a variable in a stack effect.
@@ -19,7 +20,6 @@ data EffVar
   -- ^ An effect variable with an associated type
   | QuotEffVar Text Effect
   -- ^ An effect variable with an associated stack effect
-  deriving (Show)
 
 type EffRowVar = Text
 
@@ -39,7 +39,6 @@ data Effect
     , effOutVar     :: Maybe EffRowVar
     -- ^ The output row polymorphic variable (or 'Nothing', if there are none)
     }
-    deriving (Show)
 
 -- | Datatype representing a word in Factor.
 data FactorWord
@@ -49,8 +48,25 @@ data FactorWord
     , wordEff  :: Maybe Effect
     -- ^ The stack effect of the word
     }
-    deriving (Show)
 
+instance Show EffVar where
+  show (EffVar v) = T.unpack v
+  show (TypedEffVar v t) = T.unpack v <> ": " <> T.unpack t
+  show (QuotEffVar v eff) = T.unpack v <> ": " <> show eff
+
+instance Show Effect where
+  show Effect{..} = concat
+      [ "( " 
+      , convertRowVar effInVar
+      , convertVars effIn
+      , "-- " 
+      , convertRowVar effOutVar
+      , convertVars effOut
+      , ")"
+      ]
+    where
+      convertRowVar = maybe "" ((".." <>) . (<> " ")) . fmap T.unpack
+      convertVars = concatMap ((<> " ") . show)
 
 -- !! The FromJSON instances here are pretty brittle !!
 -- They assume that the data is well-formed per how we're serializing from Factor.
