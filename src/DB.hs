@@ -32,7 +32,8 @@ data Effect
     -- ^ The output stack effects
     , effTerminated :: Bool
     -- ^ Whether the stack effect is guaranteed to throw an error
-    -- or exception (in which case 'effOut' is ignored
+    -- or exception (in which case 'effOut' is ignored) - we expect
+    -- this to be rare and won't be using it for now.
     , effInVar      :: Maybe EffRowVar
     -- ^ The input row polymorphic variable (or 'Nothing', if there are none)
     , effOutVar     :: Maybe EffRowVar
@@ -92,6 +93,6 @@ instance FromJSON FactorWord where
       , do b <- o .: "effect"
            guard (b == False)
            pure Nothing
-      -- again, this is pretty brittle
+      -- it shouldn't be anything else (also pretty brittle)
       ]
     pure FactorWord{..}
