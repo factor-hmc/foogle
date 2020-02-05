@@ -5,14 +5,10 @@ module ParseEffect where
 
 import Data.Bifunctor (first)
 import Data.Char (isSpace)
-import Data.List (isPrefixOf, isSuffixOf)
 import Data.Void
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Encoding.Error as T
-import qualified Data.Text.IO as T
-import Control.Monad ((>=>), mzero)
+import Control.Monad (mzero)
 import Control.Monad.Combinators
 import Control.Applicative ((<|>))
 import Text.Megaparsec
@@ -57,6 +53,7 @@ extractRowVar [] = (Nothing, [])
 extractRowVar vs@(EffVar v:vs')
   | ".." `T.isPrefixOf` v = (Just $ T.drop 2 v, vs')
   | otherwise           = (Nothing, vs)
+extractRowVar vs = (Nothing, vs)
 
 stackEffect :: Parser Effect
 stackEffect = do
