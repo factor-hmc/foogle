@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module DB where
 
@@ -13,53 +14,51 @@ import Control.Monad (guard)
 -- Most variables are just 'EffVar's, but if a variable has
 -- a colon and a following type or stack effect, it is made into
 -- a specialized 'TypedEffVar' or 'QuotEffVar'.
-data EffVar
-  = EffVar Text
+data EffVar a
+  = EffVar a
   -- ^ An effect variable
-  | TypedEffVar Text Text
+  | TypedEffVar a a
   -- ^ An effect variable with an associated type
-  | QuotEffVar Text Effect
+  | QuotEffVar a (Effect a)
   -- ^ An effect variable with an associated stack effect
 
-type EffRowVar = Text
-
 -- | Datatype representing a stack effect in Factor.
-data Effect
+data Effect a
   = Effect
-    { effIn         :: [EffVar]
+    { effIn         :: [EffVar a]
     -- ^ The input stack effects
-    , effOut        :: [EffVar]
+    , effOut        :: [EffVar a]
     -- ^ The output stack effects
     , effTerminated :: Bool
     -- ^ Whether the stack effect is guaranteed to throw an error
     -- or exception (in which case 'effOut' is ignored) - we expect
     -- this to be rare and won't be using it for now.
-    , effInVar      :: Maybe EffRowVar
+    , effInVar      :: Maybe a
     -- ^ The input row polymorphic variable (or 'Nothing', if there are none)
-    , effOutVar     :: Maybe EffRowVar
+    , effOutVar     :: Maybe a
     -- ^ The output row polymorphic variable (or 'Nothing', if there are none)
     }
 
 -- | Datatype representing a word in Factor.
-data FactorWord
+data FactorWord a
   = FactorWord
-    { wordName :: Text
+    { wordName :: a
     -- ^ The name of the word
-    , wordEff  :: Maybe Effect
+    , wordEff  :: Maybe (Effect a)
     -- ^ The stack effect of the word
     }
 
-instance Show EffVar where
+instance Show (EffVar Text) where
   show (EffVar v) = T.unpack v
   show (TypedEffVar v t) = T.unpack v <> ": " <> T.unpack t
   show (QuotEffVar v eff) = T.unpack v <> ": " <> show eff
 
-instance Show Effect where
+instance Show (Effect Text) where
   show Effect{..} = concat
-      [ "( " 
+      [ "( "
       , convertRowVar effInVar
       , convertVars effIn
-      , "-- " 
+      , "-- "
       , convertRowVar effOutVar
       , convertVars effOut
       , ")"
@@ -71,14 +70,14 @@ instance Show Effect where
 -- !! The FromJSON instances here are pretty brittle !!
 -- They assume that the data is well-formed per how we're serializing from Factor.
 
-instance FromJSON EffVar where
+instance FromJSON (EffVar Text) where
   parseJSON o = asum
       [ EffVar <$> parseJSON o
       , uncurry TypedEffVar <$> parseJSON o
       , uncurry QuotEffVar <$> parseJSON o
       ]
 
-instance FromJSON Effect where
+instance FromJSON (Effect Text) where
   parseJSON = withObject "stack effect" $ \o -> do
     effIn         <- o .: "in"
     effOut        <- o .: "out"
@@ -99,7 +98,7 @@ instance FromJSON Effect where
         -- if the parser breaks, it could be because of this.
         ]
 
-instance FromJSON FactorWord where
+instance FromJSON (FactorWord Text) where
   parseJSON = withObject "factor word" $ \o -> do
     wordName <- o .: "name"
     wordEff  <- asum

@@ -17,7 +17,7 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import DB
 
-parseEffect :: Text -> Either String Effect
+parseEffect :: Text -> Either String (Effect Text)
 parseEffect = first errorBundlePretty . parse stackEffect ""
 
 type Parser = Parsec Void Text
@@ -38,7 +38,7 @@ nonSpace = do
     then mzero
     else pure str
 
-effectVar :: Parser EffVar
+effectVar :: Parser (EffVar Text)
 effectVar = lexeme nonSpace >>= \effectName -> 
   if ":" `T.isSuffixOf` effectName
     then 
@@ -48,14 +48,14 @@ effectVar = lexeme nonSpace >>= \effectName ->
     else 
       pure $ EffVar effectName
 
-extractRowVar :: [EffVar] -> (Maybe EffRowVar, [EffVar])
+extractRowVar :: [EffVar Text] -> (Maybe Text, [EffVar Text])
 extractRowVar [] = (Nothing, [])
 extractRowVar vs@(EffVar v:vs')
   | ".." `T.isPrefixOf` v = (Just $ T.drop 2 v, vs')
   | otherwise           = (Nothing, vs)
 extractRowVar vs = (Nothing, vs)
 
-stackEffect :: Parser Effect
+stackEffect :: Parser (Effect Text)
 stackEffect = do
   symbol "("
   ins <- many (try effectVar)
