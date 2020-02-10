@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 module Main where
 
 import Parse
 import Types
 import Search
+import Infer
+
 import Data.Aeson
 import Data.Foldable (traverse_)
 import qualified Data.Text as T
@@ -17,10 +20,10 @@ main = do
   case query of
     Left err  -> putStrLn err
     Right eff -> do
-      db <- eitherDecode <$> BS.readFile "db.json"
-      case db of
+      (eitherDecode <$> BS.readFile "db.json") >>= \case
         Left err  -> putStrLn err
-        Right db' -> traverse_ print $ searchDB 5 eff db'
+        Right db -> let inferredDB = map infer db
+                     in traverse_ print $ searchDB 5 eff inferredDB
 
 -- run :: Query -> IO ()
 -- run opts = do

@@ -1,3 +1,4 @@
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Infer where
@@ -63,3 +64,9 @@ inferEffVar (EffVar v) = case inferType v of
 -- There is already a type
 inferEffVar (TypedEffVar v tp) = TypedEffVar v tp
 inferEffVar (QuotEffVar v eff) = QuotEffVar v (overEffVars inferEffVar eff)
+
+infer :: FactorWord Text -> FactorWord Text
+infer FactorWord{..} = FactorWord
+  { wordName = wordName
+  , wordEff = overEffVars inferEffVar <$> wordEff
+  }
