@@ -1,110 +1,129 @@
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Types where
 
+import Data.Aeson
+import Data.Foldable (asum)
 import Data.Text (Text(..))
 import qualified Data.Text as T
+import Control.Monad (guard)
 
+-- | Datatype representing a variable in a stack effect.
+-- Most variables are just 'EffVar's, but if a variable has
+-- a colon and a following type or stack effect, it is made into
+-- a specialized 'TypedEffVar' or 'QuotEffVar'.
+data EffVar a
+  = EffVar a
+  -- ^ An effect variable
+  | TypedEffVar a a
+  -- ^ An effect variable with an associated type
+  | QuotEffVar a (Effect a)
+  -- ^ An effect variable with an associated stack effect
+  deriving (Eq)
+
+-- | Datatype representing a stack effect in Factor.
+data Effect a
+  = Effect
+    { effIn         :: [EffVar a]
+    -- ^ The input stack effects
+    , effOut        :: [EffVar a]
+    -- ^ The output stack effects
+    , effTerminated :: Bool
+    -- ^ Whether the stack effect is guaranteed to throw an error
+    -- or exception (in which case 'effOut' is ignored) - we expect
+    -- this to be rare and won't be using it for now.
+    , effInVar      :: Maybe a
+    -- ^ The input row polymorphic variable (or 'Nothing', if there are none)
+    , effOutVar     :: Maybe a
+    -- ^ The output row polymorphic variable (or 'Nothing', if there are none)
+    }
+    deriving (Eq)
+
+-- | Datatype representing a word in Factor.
 data FactorWord a
   = FactorWord
-      a              -- ^ The name of the word
-      (StackEffect a)-- ^ The stack effect of the word
-  deriving (Read, Show, Eq, Functor)
+    { wordName :: a
+    -- ^ The name of the word
+    , wordEff  :: Maybe (Effect a)
+    -- ^ The stack effect of the word
+    }
 
-data StackEffect a
-  = StackEffect 
-      [(a, Maybe (StackEffect a))] -- ^ The input stack variables
-      [(a, Maybe (StackEffect a))] -- ^ The output stack variables
-  deriving (Read, Show, Eq, Functor)
-
-getInEffects :: StackEffect a -> [(a, Maybe (StackEffect a))]
-getInEffects (StackEffect ins _) = ins
-
-getOutEffects :: StackEffect a -> [(a, Maybe (StackEffect a))]
-getOutEffects (StackEffect _ outs) = outs
-
-instance Foldable FactorWord where
-  foldMap f (FactorWord name se) = foldMap f se
-
-instance Foldable StackEffect where
-  foldMap f (StackEffect ins outs) = foldMap foldTuple ins <> foldMap foldTuple outs
-    where
-      foldTuple (a, Nothing) = f a
-      foldTuple (a, Just rc) = f a <> foldMap f rc
-
-instance Traversable StackEffect where
-  sequenceA (StackEffect ins outs) = do
-    ins'  <- sequenceA' ins
-    outs' <- sequenceA' outs
-    pure $ StackEffect ins' outs'
-      where
-        sequenceA' [] = pure []
-        sequenceA' ((a, Nothing):es) = do
-          a'  <- a
-          es' <- sequenceA' es
-          pure $ (a', Nothing) : es'
-        sequenceA' ((a, Just eff):es) = do
-          a'  <- a
-          es' <- sequenceA' es
-          e' <- sequenceA eff
-          pure $ (a', Just e') : es'
-
-instance Applicative StackEffect where
-  pure x = StackEffect (repeat (x, Just (pure x))) (repeat (x, Just (pure x)))
-  (StackEffect fs gs) <*> (StackEffect as bs) = 
-    StackEffect (ap fs as) (ap gs bs)
-      where
-        ap funcs list = zipWith combine funcs list
-        combine func val = case (func, val) of
-          ((f, Just fSE), (a, Just aSE)) -> (f a, Just $ fSE <*> aSE)
-          ((f, _), (a, _))               -> (f a, Nothing)
-
-type SimpleWord   = FactorWord Text
-type SimpleEffect = StackEffect Text
-
-type HighlightedWord = FactorWord Highlighted
-type HighlightedEffect= StackEffect Highlighted
-
--- | Datatype for output to terminal
-data Highlighted
-  = Highlighted 
-      Text        -- ^ The highlighted text
-      Highlights  -- ^ Locations of the highlights
-  deriving (Show, Eq)
-
--- | Locations of the highlights in a string, in order
-newtype Highlights
-  = Highlights { getHighlights :: [(Int, Int)]}
-  deriving (Show, Eq)
-
-instance Semigroup Highlights where
-  (Highlights []) <> (Highlights h2s) = Highlights h2s
-  (Highlights h1s) <> (Highlights []) = Highlights h1s
-  (Highlights ((x1,y1):h1s)) <> (Highlights ((x2,y2):h2s)) =
-       -- The two highlights intersect and can be combined
-    if | intersects x1 y1 x2 y2 -> Highlights ((min x1 x2, max y1 y2):h1s) <> Highlights h2s
-       -- (x1, y1) is strictly behind (x2, y2)
-       | y1 < x2                -> Highlights $ (x1, y1) : (x2, y2) : getHighlights (Highlights h1s <> Highlights h2s)
-       -- (x2, y2) is strictly behind (x1, y1)
-       | otherwise              -> Highlights $ (x2, y2) : (x1, y1) : getHighlights (Highlights h1s <> Highlights h2s)
-    where
-      intersects x1 y1 x2 y2 = x1 <= y2 && x2 <= y1 || x2 <= y1 && x1 <= y2
-
-instance Monoid Highlights where
-  mempty  = Highlights []
-  mappend = (<>)
-
-data Query
-  = Query
-  { inMin      :: Maybe Int -- ^ The minimum number of elements in the input of a stack effect
-  , inMax      :: Maybe Int -- ^ The maximum number of elements in the input of a stack effect
-  , inQueries  :: [Text] -- ^ The queries for the input stack effect (unordered)
-  , outMin     :: Maybe Int -- ^ The minimum number of elements in the output of a stack effect
-  , outMax     :: Maybe Int -- ^ The maximum number of elements in the output of a stack effect
-  , outQueries :: [Text] -- ^ The queries for the output stack effect (unordered)
-  , wordName   :: Maybe Text -- ^ The name of the word
-  , strict     :: Bool -- ^ Strictly match the queries?
-  , fileName   :: FilePath -- ^ Name of the file to index
+-- Can't go from 'a' to 'b' because there are row variables that 
+-- don't get mapped over.
+overEffVars :: (EffVar a -> EffVar a) -> Effect a -> Effect a
+overEffVars f Effect{..} = Effect
+  { effIn         = map f effIn
+  , effOut        = map f effOut
+  , effTerminated = effTerminated
+  , effInVar      = effInVar
+  , effOutVar     = effOutVar
   }
+
+instance Show (EffVar Text) where
+  show (EffVar v) = T.unpack v
+  show (TypedEffVar v t) = T.unpack v <> ": " <> T.unpack t
+  show (QuotEffVar v eff) = T.unpack v <> ": " <> show eff
+
+instance Show (Effect Text) where
+  show Effect{..} = concat
+      [ "( "
+      , convertRowVar effInVar
+      , convertVars effIn
+      , "-- "
+      , convertRowVar effOutVar
+      , convertVars effOut
+      , ")"
+      ]
+    where
+      convertRowVar = maybe "" ((".." <>) . (<> " ")) . fmap T.unpack
+      convertVars = concatMap ((<> " ") . show)
+
+instance Show (FactorWord Text) where
+  show FactorWord{..} = ": " <> T.unpack wordName <> maybe "" ((" " <>) . show) wordEff
+
+-- !! The FromJSON instances here are pretty brittle !!
+-- They assume that the data is well-formed per how we're serializing from Factor.
+
+instance FromJSON (EffVar Text) where
+  parseJSON o = asum
+      [ EffVar <$> parseJSON o
+      , uncurry TypedEffVar <$> parseJSON o
+      , uncurry QuotEffVar <$> parseJSON o
+      ]
+
+instance FromJSON (Effect Text) where
+  parseJSON = withObject "stack effect" $ \o -> do
+    effIn         <- o .: "in"
+    effOut        <- o .: "out"
+    effTerminated <- o .: "terminated?"
+    effInVar      <- parseRowVar o "in_var"
+    effOutVar     <- parseRowVar o "out_var"
+    pure Effect{..}
+    where
+      parseEffVar field = asum
+      parseRowVar o field = asum
+        -- either we can parse it as a row var
+        [ o .: field
+        -- or it's False
+        , do b <- o .: field
+             guard (b == False)
+             pure Nothing
+        -- it shouldn't be anything else, and we therefore won't be lenient here.
+        -- if the parser breaks, it could be because of this.
+        ]
+
+instance FromJSON (FactorWord Text) where
+  parseJSON = withObject "factor word" $ \o -> do
+    wordName <- o .: "name"
+    wordEff  <- asum
+      -- either we can parse it as an effect
+      [ o .: "effect"
+      -- or it's False
+      , do b <- o .: "effect"
+           guard (b == False)
+           pure Nothing
+      -- it shouldn't be anything else (also pretty brittle)
+      ]
+    pure FactorWord{..}

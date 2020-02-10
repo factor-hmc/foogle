@@ -35,6 +35,7 @@ library:
   - optparse-applicative
   - ansi-terminal
   - aeson
+  - array
 
 executables:
   foogle-exe:
@@ -48,6 +49,8 @@ executables:
     - foogle
     - text
     - optparse-applicative
+    - bytestring
+    - aeson
 
 tests:
   foogle-test:

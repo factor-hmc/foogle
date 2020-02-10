@@ -1,6 +1,6 @@
-module Argparse where
+module Old.Argparse where
 
-import Types
+import Old.Types
 import Text.Read (readMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T

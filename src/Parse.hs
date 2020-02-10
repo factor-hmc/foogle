@@ -1,19 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RecordWildCards #-}
 module Parse where
 
-import qualified System.FilePath.Find as F
--- import qualified System.IO.Strict as SIO
 import Data.Bifunctor (first)
 import Data.Char (isSpace)
-import Control.Monad ((>=>), mzero)
 import Data.Void
 import Data.Text (Text)
 import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import qualified Data.Text.Encoding.Error as T
-import qualified Data.Text.IO as T
-import qualified Data.ByteString as BS
+import Control.Monad (mzero)
 import Control.Monad.Combinators
 import Control.Applicative ((<|>))
 import Text.Megaparsec
@@ -22,19 +17,8 @@ import qualified Text.Megaparsec.Char.Lexer as L
 
 import Types
 
-makeDB :: String -> IO [(FilePath, [SimpleWord])]
-makeDB dir = do
-  paths <- F.find F.always (F.extension F.==? ".factor") dir
-  traverse indexFile paths
-
-indexFile :: FilePath -> IO (FilePath, [SimpleWord])
-indexFile fp = (fp,) . parseDefns fp . T.decodeUtf8With T.lenientDecode <$> BS.readFile fp
-
-parseDefns :: String -> Text -> [SimpleWord]
-parseDefns fp = T.lines >=> parseDefn fp
-
-parseDefn :: String -> Text -> [SimpleWord]
-parseDefn fp = either (const []) pure . parse factorWord fp
+parseEffect :: Text -> Either String (Effect Text)
+parseEffect = first errorBundlePretty . parse stackEffect ""
 
 type Parser = Parsec Void Text
 
@@ -45,7 +29,7 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme space1
 
 reserveds :: [String]
-reserveds = [":", "::", "(", "--", ")"]
+reserveds = [")", "(", "--"]
 
 nonSpace :: Parser Text
 nonSpace = do
@@ -54,27 +38,33 @@ nonSpace = do
     then mzero
     else pure str
 
-stackEffect :: Parser SimpleEffect
+effectVar :: Parser (EffVar Text)
+effectVar = lexeme nonSpace >>= \effectName ->
+  if ":" `T.isSuffixOf` effectName
+    then
+      let effectName' = T.init effectName
+      in QuotEffVar effectName' <$> try (lexeme stackEffect)
+         <|> TypedEffVar effectName' <$> lexeme nonSpace
+    else
+      pure $ EffVar effectName
+
+extractRowVar :: [EffVar Text] -> (Maybe Text, [EffVar Text])
+extractRowVar [] = (Nothing, [])
+extractRowVar vs@(EffVar v:vs')
+  | ".." `T.isPrefixOf` v = (Just $ T.drop 2 v, vs')
+  | otherwise           = (Nothing, vs)
+extractRowVar vs = (Nothing, vs)
+
+stackEffect :: Parser (Effect Text)
 stackEffect = do
   symbol "("
-  ins <- many (try stackEffectVar <|> try regularVar)
+  ins <- many (try effectVar)
   symbol "--"
-  outs <- many (try stackEffectVar <|> try regularVar)
+  outs <- many (try effectVar)
   -- Doesn't have to have a space after it!
   chunk ")"
-  pure $ StackEffect ins outs
-  where
-    regularVar = (, Nothing) <$> lexeme nonSpace
-    stackEffectVar = do
-      var <- lexeme nonSpace
-      se <- lexeme stackEffect
-      pure (var, Just se)
-
-factorWord :: Parser SimpleWord
-factorWord = do
-  space
-  try (symbol ":") <|> symbol "::"
-  name <- lexeme nonSpace
-  se <- stackEffect
-  space
-  pure $ FactorWord name se
+  let (effInVar, effIn) = extractRowVar ins
+      (effOutVar, effOut) = extractRowVar outs
+      -- TODO: check for this somehow (if at all possible).
+      effTerminated = False
+  pure $ Effect{..}
