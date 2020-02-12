@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-module Utils where
+module EditDistance where
 
 import Data.Array
 
@@ -11,11 +11,14 @@ data EditDistanceOptions a = EditDistanceOptions
   , replaceCost :: a -> a -> Int -- ^ Cost to replace one element by another
   }
 
-defaultEditDistanceOptions :: EditDistanceOptions a
+defaultEditDistanceOptions :: Eq a => EditDistanceOptions a
 defaultEditDistanceOptions = EditDistanceOptions
   { insertCost  = const 1
   , deleteCost  = const 1
-  , replaceCost = const (const 1)
+  , replaceCost = \x -> \y -> 
+      if x == y 
+        then 0
+        else 1
   }
 
 -- | DP version of edit distance taken from https://wiki.haskell.org/Edit_distance.
@@ -31,14 +34,15 @@ editDistance EditDistanceOptions{..} xs ys = table ! (m,n)
     table = array bnds [(ij, dist ij) | ij <- range bnds]
     bnds  = ((0,0),(m,n))
     
-    dist (0,j) = j
-    dist (i,0) = i
+    -- I'm not sure why, but changing these base cases to be the sum of the 
+    -- costs of the elements skews the search...
+    -- Will have to look into it later.
+    dist (0,j) = j -- sum [ insertCost (y ! yy) | yy <- [1,j] ]
+    dist (i,0) = i -- sum [ deleteCost (x ! xx) | xx <- [1,i] ]
     dist (i,j) = minimum 
       [ table ! (i-1,j) + deleteCost elem1
       , table ! (i,j-1) + insertCost elem2
-      ,  if elem1 == elem2
-           then table ! (i-1,j-1) 
-           else replaceCost elem1 elem2 + table ! (i-1,j-1)
+      , replaceCost elem1 elem2 + table ! (i-1,j-1)
       ]
       where
         elem1 = x ! i

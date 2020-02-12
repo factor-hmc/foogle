@@ -23,6 +23,11 @@ data EffVar a
   -- ^ An effect variable with an associated stack effect
   deriving (Eq)
 
+effVarName :: EffVar a -> a
+effVarName (EffVar a) = a
+effVarName (TypedEffVar a _) = a
+effVarName (QuotEffVar a _) = a
+
 -- | Datatype representing a stack effect in Factor.
 data Effect a
   = Effect

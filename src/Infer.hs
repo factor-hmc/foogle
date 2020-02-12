@@ -27,10 +27,7 @@ stripExtraneous t =
 -- This is pretty naive.
 inferType :: Text -> Maybe Text
 inferType name = lookup (T.toLower $ stripExtraneous name)
-  [ ("obj", "object")
-  , ("object", "object")
-  , ("exemplar", "object")
-  , ("seq", "sequence")
+  [ ("seq", "sequence")
   , ("sequence", "sequence")
   , ("array", "array")
   , ("arr", "array")
@@ -57,11 +54,10 @@ inferType name = lookup (T.toLower $ stripExtraneous name)
 -- | Infer a type for an 'EffVar' if it doesn't have one already.
 inferEffVar :: EffVar Text -> EffVar Text
 inferEffVar (EffVar v) = case inferType v of
-  -- No successful inference
+  -- We can't infer any type, so don't change it
   Nothing -> EffVar v
-  -- Inferred a type
+  -- We can infer a type, so give it the type
   Just tp -> TypedEffVar v tp
--- There is already a type
 inferEffVar (TypedEffVar v tp) = TypedEffVar v tp
 inferEffVar (QuotEffVar v eff) = QuotEffVar v (overEffVars inferEffVar eff)
 
