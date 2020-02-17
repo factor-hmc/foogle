@@ -3,3 +3,5 @@ foogle.cabal
 *~
 db.txt
 *.json
+result
+dist-newstyle/

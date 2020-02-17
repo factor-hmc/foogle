@@ -1,31 +1,15 @@
-# foogle
+# foogle web app
 
 # Installation
 1. Clone this repo 
-2. Install [stack](https://docs.haskellstack.org/en/stable/install_and_upgrade/)
-3. Run `$ stack build` in the root.
+2. Install [nix](https://nixos.org/nix/)
+3. Run the Factor script `make-database.factor` to generate a database file.
+4. Run `$ nix-build` in the root to build the project.
 
 # Execution
-Run `$ stack exec foogle-exe -- [args] filepath` in the root.
-
-Run `$ stack exec foogle-exe -- -h` or `$ stack exec foogle-exe -- --help` to 
-get a list of commands.
+Open the file in `./result/bin/foogle-exe.jsexe/index.html` in a web browser 
+to run the webapp.
 
 # Notes
-* The parser ignores malformed encodings (looking at you, 
-/extras/units/imperial/)
-
-# TODOs
-* Change `Main.hs` to actually use an argparser (`optparse-applicative`, perhaps)
-  - [ ] Generate DB
-  - [ ] Read from DB or directory
-  - [x] Min, max number of input stack effects
-  - [x] Input stack effect query
-  - [x] Min, max number of output stack effects
-  - [x] Output stack effect query
-  - [x] Function name query
-  - [x] Look at infixes
-* Fix searching for words that have nested stack effects
-* Serialize to a better format
-* Improve search capabilities and speed
-* Clean up code
+Currently, it is very slow. Also, you have to manually give it the database by 
+using the file upload box on the page.

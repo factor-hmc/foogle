@@ -36,6 +36,7 @@ library:
   - ansi-terminal
   - aeson
   - array
+  - miso
 
 executables:
   foogle-exe:
@@ -51,6 +52,8 @@ executables:
     - optparse-applicative
     - bytestring
     - aeson
+    - miso
+    - ghcjs-base
 
 tests:
   foogle-test:

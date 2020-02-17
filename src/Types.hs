@@ -54,6 +54,7 @@ data FactorWord a
     , wordEff  :: Maybe (Effect a)
     -- ^ The stack effect of the word
     }
+    deriving (Eq)
 
 -- Can't go from 'a' to 'b' because there are row variables that 
 -- don't get mapped over.
