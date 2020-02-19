@@ -51,6 +51,22 @@ executables:
     - optparse-applicative
     - bytestring
     - aeson
+  foogle-server:
+    main:                Main.hs
+    source-dirs:         server
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - foogle
+    - text
+    - bytestring
+    - aeson
+    - servant-server
+    - wai
+    - warp
+    - utf8-string
 
 tests:
   foogle-test:
