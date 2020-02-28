@@ -8,6 +8,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Server where
 
@@ -27,7 +28,8 @@ import Search
 import Infer
 
 type DB = [FactorWord Text]
-type QueryAPI = QueryParam "search" Text :> QueryParam "numResults" Int :> Get '[JSON] [FoogleResult]
+type SearchResults = Headers '[Header "Access-Control-Allow-Origin" String] [FoogleResult]
+type QueryAPI = QueryParam "search" Text :> QueryParam "numResults" Int :> Get '[JSON] SearchResults
 
 data FoogleResult =
   FoogleResult
@@ -55,7 +57,7 @@ queryAPI = Proxy
 server :: DB -> Server QueryAPI
 server db = search
   where
-    search :: Maybe Text -> Maybe Int -> Handler [FoogleResult]
+    search :: Maybe Text -> Maybe Int -> Handler SearchResults
     search _query (Just n)
       | n <= 0 = throwError $ err400 { errBody = "Number of results needs to be greater than 0." }
     -- eventually don't do this
@@ -63,8 +65,10 @@ server db = search
     search (Just query) numResults =
       case parseEffect query of
         Left err  -> throwError $ err400 { errBody = "Failed to parse input effect: " <> BLU.fromString err }
-        Right eff -> return . map factorWordToResult $
+        Right eff -> return . addXOriginHeader . map factorWordToResult $
           searchDB (fromMaybe 5 numResults) eff db
+    addXOriginHeader:: a -> Headers '[Header "Access-Control-Allow-Origin" String] a
+    addXOriginHeader= addHeader "*"
 
 mkApp :: DB -> Application
 mkApp db = serve queryAPI (server db)
