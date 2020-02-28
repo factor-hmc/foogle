@@ -59,16 +59,22 @@ server db = search
   where
     search :: Maybe Text -> Maybe Int -> Handler SearchResults
     search _query (Just n)
-      | n <= 0 = throwError $ err400 { errBody = "Number of results needs to be greater than 0." }
+      | n <= 0 = throwError $ err400 { errBody    = "Number of results needs to be greater than 0." 
+                                     , errHeaders = corsHeader }
     -- eventually don't do this
-    search Nothing _numResults = throwError $ err400 { errBody = "No search term provided." }
+    search Nothing _numResults = throwError $ err400 { errBody = "No search term provided." 
+                                                     , errHeaders = corsHeader }
     search (Just query) numResults =
       case parseEffect query of
-        Left err  -> throwError $ err400 { errBody = "Failed to parse input effect: " <> BLU.fromString err }
-        Right eff -> return . addXOriginHeader . map factorWordToResult $
+        Left err  -> throwError $ err400 { errBody = "Failed to parse input effect: " <> BLU.fromString err 
+                                         , errHeaders = corsHeader }
+        Right eff -> return . addCORSHeader . map factorWordToResult $
           searchDB (fromMaybe 5 numResults) eff db
-    addXOriginHeader:: a -> Headers '[Header "Access-Control-Allow-Origin" String] a
-    addXOriginHeader= addHeader "*"
+
+    addCORSHeader:: a -> Headers '[Header "Access-Control-Allow-Origin" String] a
+    addCORSHeader = addHeader "*"
+
+    corsHeader = getHeaders $ addCORSHeader undefined
 
 mkApp :: DB -> Application
 mkApp db = serve queryAPI (server db)
