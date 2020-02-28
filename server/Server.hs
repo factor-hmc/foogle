@@ -13,9 +13,9 @@ module Server where
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy.UTF8 as BLU
-import Data.Maybe (fromMaybe)
+import Data.Maybe ( fromMaybe )
 import Data.Proxy
-import Data.Text (Text)
+import Data.Text ( Text )
 import qualified Data.Text as T
 import GHC.Generics
 
@@ -31,18 +31,23 @@ type QueryAPI = QueryParam "search" Text :> QueryParam "numResults" Int :> Get '
 
 data FoogleResult =
   FoogleResult
-  { resultName   :: String
-  , resultEffect :: String
+  { resultName   :: Text
+  , resultEffect :: Effect Text
   }
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Show)
 
-instance ToJSON FoogleResult
+instance ToJSON FoogleResult where
+  toJSON FoogleResult{..} = object [
+    "name"   .= T.unpack resultName,
+    "effect" .= show resultEffect ]
 
 factorWordToResult :: FactorWord Text -> FoogleResult
 factorWordToResult FactorWord{..} = FoogleResult
-  { resultName   = T.unpack wordName
-  , resultEffect = maybe "" show $ wordEff
+  { resultName   = wordName
+  , resultEffect = fromMaybe emptyEffect wordEff
   }
+  where
+    emptyEffect = Effect [] [] False Nothing Nothing
 
 queryAPI :: Proxy QueryAPI
 queryAPI = Proxy
