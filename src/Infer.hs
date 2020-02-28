@@ -49,6 +49,9 @@ inferType name = lookup (T.toLower $ stripExtraneous name)
   , ("keys", "sequence")
   , ("?", "boolean")
   , ("boolean", "boolean")
+  , ("n", "number")
+  , ("num", "number")
+  , ("number", "number")
   ]
 
 -- | Infer a type for an 'EffVar' if it doesn't have one already.
