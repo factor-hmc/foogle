@@ -53,6 +53,8 @@ data FactorWord a
     -- ^ The name of the word
     , wordEff  :: Maybe (Effect a)
     -- ^ The stack effect of the word
+    , wordURL :: a
+    -- ^ The documentation location of the word
     }
 
 -- Can't go from 'a' to 'b' because there are row variables that 
@@ -86,7 +88,12 @@ instance Show (Effect Text) where
       convertVars = concatMap ((<> " ") . show)
 
 instance Show (FactorWord Text) where
-  show FactorWord{..} = ": " <> T.unpack wordName <> maybe "" ((" " <>) . show) wordEff
+  show FactorWord{..} = mconcat 
+    [ ": "
+    , T.unpack wordName
+    , maybe "" ((" " <>) . show) wordEff
+    , " (" <> T.unpack wordURL <> ")"
+    ]
 
 -- !! The FromJSON instances here are pretty brittle !!
 -- They assume that the data is well-formed per how we're serializing from Factor.
@@ -131,4 +138,5 @@ instance FromJSON (FactorWord Text) where
            pure Nothing
       -- it shouldn't be anything else (also pretty brittle)
       ]
+    wordURL <- o .: "url"
     pure FactorWord{..}

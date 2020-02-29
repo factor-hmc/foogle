@@ -68,4 +68,5 @@ infer :: FactorWord Text -> FactorWord Text
 infer FactorWord{..} = FactorWord
   { wordName = wordName
   , wordEff = overEffVars inferEffVar <$> wordEff
+  , wordURL = wordURL
   }
