@@ -55,6 +55,10 @@ data FactorWord a
     -- ^ The stack effect of the word
     , wordURL :: a
     -- ^ The documentation location of the word
+    , wordVocab :: a
+    -- ^ The word's vocabulary
+    , wordVocabURL :: a
+    -- ^ The location of the word's vocabulary
     }
 
 -- Can't go from 'a' to 'b' because there are row variables that 
@@ -138,5 +142,7 @@ instance FromJSON (FactorWord Text) where
            pure Nothing
       -- it shouldn't be anything else (also pretty brittle)
       ]
-    wordURL <- o .: "url"
+    wordURL      <- o .: "url"
+    wordVocab    <- o .: "vocabulary"
+    wordVocabURL <- o .: "vocabulary_url"
     pure FactorWord{..}

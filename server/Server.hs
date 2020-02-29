@@ -37,24 +37,30 @@ type QueryAPI = QueryParam "search" Text :> QueryParam "numResults" Int :> Get '
 
 data FoogleResult =
   FoogleResult
-  { resultName   :: Text
-  , resultEffect :: Effect Text
-  , resultURL    :: Text
+  { resultName     :: Text
+  , resultEffect   :: Effect Text
+  , resultURL      :: Text
+  , resultVocab    :: Text
+  , resultVocabURL :: Text
   }
   deriving (Eq, Show)
 
 instance ToJSON FoogleResult where
   toJSON FoogleResult{..} = object 
-   [ "name"   .= T.unpack resultName
-   , "effect" .= show resultEffect 
-   , "url"    .= T.unpack resultURL 
+   [ "name"           .= T.unpack resultName
+   , "effect"         .= show resultEffect 
+   , "url"            .= T.unpack resultURL 
+   , "vocabulary"     .= T.unpack resultVocab
+   , "vocabulary_url" .= T.unpack resultVocabURL
    ]
 
 factorWordToResult :: FactorWord Text -> FoogleResult
 factorWordToResult FactorWord{..} = FoogleResult
-  { resultName   = wordName
-  , resultEffect = fromMaybe emptyEffect wordEff
-  , resultURL    = wordURL
+  { resultName     = wordName
+  , resultEffect   = fromMaybe emptyEffect wordEff
+  , resultURL      = wordURL
+  , resultVocab    = wordVocab
+  , resultVocabURL = wordVocabURL
   }
   where
     emptyEffect = Effect [] [] False Nothing Nothing

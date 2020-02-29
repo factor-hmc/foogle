@@ -65,8 +65,5 @@ inferEffVar (TypedEffVar v tp) = TypedEffVar v tp
 inferEffVar (QuotEffVar v eff) = QuotEffVar v (overEffVars inferEffVar eff)
 
 infer :: FactorWord Text -> FactorWord Text
-infer FactorWord{..} = FactorWord
-  { wordName = wordName
-  , wordEff = overEffVars inferEffVar <$> wordEff
-  , wordURL = wordURL
-  }
+infer w@FactorWord{..} = w
+  { wordEff = overEffVars inferEffVar <$> wordEff }

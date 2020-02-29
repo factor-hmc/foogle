@@ -6,9 +6,11 @@ IN: make-database
   word "declared-effect" word-prop :> effect
   word name>> :> word-name
   word topic>filename "https://docs.factorcode.org/content/" prepend :> url
-  H{ { "name" word-name } { "effect" effect } { "url" url } } ;
+  word vocabulary>> :> vocabulary
+  vocabulary escape-filename "https://docs.factorcode.org/content/vocab-" prepend ".html" append :> vocabulary-url
+  H{ { "name" word-name } { "effect" effect } { "url" url } { "vocabulary" vocabulary } { "vocabulary_url" vocabulary-url } } ;
 
-"db2.json"
+"db.json"
 utf8
 [ all-words [ mk-hm ] map json-print ]
 with-file-writer
