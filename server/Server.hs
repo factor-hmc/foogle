@@ -75,7 +75,7 @@ server db = search
     search _query (Just n)
       | n <= 0 = throwError $ err400 { errBody    = "Number of results needs to be greater than 0." 
                                      , errHeaders = corsHeader }
-      | n > maxResults = throwError $ err400 { errBody = showBL n <> " is too many requested ( " <> showBL maxResults <> " is the maximum)"
+      | n > maxResults = throwError $ err400 { errBody = showBL n <> " is too many requested (" <> showBL maxResults <> " is the maximum)"
                                              , errHeaders = corsHeader }
     -- eventually don't do this
     search Nothing _numResults = throwError $ err400 { errBody = "No search term provided." 
