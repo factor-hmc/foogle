@@ -29,7 +29,7 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme space1
 
 reserveds :: [String]
-reserveds = [")", "(", "--", "–"]
+reserveds = [")", "(", "--", "–", "—"]
 
 nonSpace :: Parser Text
 nonSpace = do
@@ -59,10 +59,10 @@ stackEffect :: Parser (Effect Text)
 stackEffect = do
   symbol "("
   ins <- many (try effectVar)
-  -- Allow "–" to be used instead of "--" 
+  -- Allow "—" or "–" to be used instead of "--" 
   -- (hotfix for users who can't type "--" because their phones autocorrect it 
-  -- to an emdash)
-  try (symbol "--") <|> symbol "–"
+  -- to an endash or an emdash)
+  try (symbol "--") <|> try (symbol "—") <|> symbol "–"
   outs <- many (try effectVar)
   -- Doesn't have to have a space after it!
   chunk ")"
