@@ -44,7 +44,7 @@ effectVar = lexeme nonSpace >>= \effectName ->
     then
       let effectName' = T.init effectName
       in QuotEffVar effectName' <$> try (lexeme stackEffect)
-         <|> TypedEffVar effectName' <$> lexeme nonSpace
+         <|> TypedEffVar effectName' . pure <$> lexeme nonSpace
     else
       pure $ EffVar effectName
 

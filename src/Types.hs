@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Types where
 
@@ -8,6 +9,9 @@ import Data.Aeson
 import Data.Foldable (asum)
 import Data.Text (Text(..))
 import qualified Data.Text as T
+import Data.Map (Map(..))
+import qualified Data.Map as M
+import Data.List (intercalate)
 import Control.Monad (guard)
 
 -- | Datatype representing a variable in a stack effect.
@@ -17,8 +21,11 @@ import Control.Monad (guard)
 data EffVar a
   = EffVar a
   -- ^ An effect variable
-  | TypedEffVar a a
-  -- ^ An effect variable with an associated type
+  | AnnotatedEffVar a a
+  -- ^ An effect variable with a description in its documentation
+  -- (usually we can guess a type from the annotation)
+  | TypedEffVar a [a]
+  -- ^ An effect variable that might be one of the associated types
   | QuotEffVar a (Effect a)
   -- ^ An effect variable with an associated stack effect
   deriving (Eq)
@@ -74,7 +81,10 @@ overEffVars f Effect{..} = Effect
 
 instance Show (EffVar Text) where
   show (EffVar v) = T.unpack v
-  show (TypedEffVar v t) = T.unpack v <> ": " <> T.unpack t
+  show (TypedEffVar v [t]) = T.unpack v <> ": " <> T.unpack t
+  -- This isn't valid factor syntax, but is useful for us humans
+  -- since there are many types we could have assigned to this var
+  show (TypedEffVar v ts) = T.unpack v <> ": (" <> intercalate " | " (map T.unpack ts) <> ")"
   show (QuotEffVar v eff) = T.unpack v <> ": " <> show eff
 
 instance Show (Effect Text) where
@@ -105,22 +115,35 @@ instance Show (FactorWord Text) where
 instance FromJSON (EffVar Text) where
   parseJSON o = asum
       [ EffVar <$> parseJSON o
-      , uncurry TypedEffVar <$> parseJSON o
+      , (\(name, tp) -> TypedEffVar name [tp]) <$> parseJSON o
       , uncurry QuotEffVar <$> parseJSON o
       ]
 
 instance FromJSON (Effect Text) where
   parseJSON = withObject "stack effect" $ \o -> do
-    effIn         <- o .: "in"
-    effOut        <- o .: "out"
-    effTerminated <- o .: "terminated?"
-    effInVar      <- parseRowVar o "in_var"
-    effOutVar     <- parseRowVar o "out_var"
+    (effVarDescriptions :: Map Text Text)  <- o .:? "effect_descriptions" .!= M.empty
+    let effVarDescriptions = M.empty
+    effIn              <- map (addDescription effVarDescriptions) <$> o .: "in"
+    effOut             <- map (addDescription effVarDescriptions) <$> o .: "out"
+    effTerminated      <- o .: "terminated?"
+    effInVar           <- parseRowVar o effVarDescriptions "in_var"
+    effOutVar          <- parseRowVar o effVarDescriptions "out_var"
     pure Effect{..}
     where
-      parseEffVar field = asum
-      parseRowVar o field = asum
-        -- either we can parse it as a row var
+      -- Annotate an information-less effvar with its given description (if it exists)
+      addDescription effVarDescriptions v@(EffVar e) = case M.lookup e effVarDescriptions of
+        Just desc -> AnnotatedEffVar e desc
+        Nothing   -> v
+      -- Recursively annotate the contents of a quotation
+      addDescription effVarDescriptions (QuotEffVar e q) = QuotEffVar e $ overEffVars (addDescription effVarDescriptions) q
+      -- Don't do anything to other variables
+      addDescription _ ev = ev
+
+      parseRowVar o effVarDescriptions field = asum
+        -- either we can parse it as a row var 
+        -- (note that we don't attempt to annotate the
+        -- row vars with their descriptions yet - we presently want the descriptions for
+        -- type information and row vars have none of that)
         [ o .: field
         -- or it's False
         , do b <- o .: field

@@ -36,6 +36,7 @@ library:
   - ansi-terminal
   - aeson
   - array
+  - containers
 
 executables:
   foogle-exe:

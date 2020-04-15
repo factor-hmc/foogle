@@ -60,8 +60,8 @@ inferEffVar (EffVar v) = case inferType v of
   -- We can't infer any type, so don't change it
   Nothing -> EffVar v
   -- We can infer a type, so give it the type
-  Just tp -> TypedEffVar v tp
-inferEffVar (TypedEffVar v tp) = TypedEffVar v tp
+  Just tp -> TypedEffVar v [tp]
+inferEffVar (TypedEffVar v tps) = TypedEffVar v tps
 inferEffVar (QuotEffVar v eff) = QuotEffVar v (overEffVars inferEffVar eff)
 
 infer :: FactorWord Text -> FactorWord Text

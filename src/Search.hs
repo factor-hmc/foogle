@@ -11,8 +11,8 @@ import Types
 
 effectEditDistanceOptions :: EditDistanceOptions (EffVar Text)
 effectEditDistanceOptions = EditDistanceOptions
-  { insertCost = const 3
-  , deleteCost = const 3
+  { insertCost = const 4
+  , deleteCost = const 4
   -- This probably should recursively compare effects (e.g. for quotations)
   , replaceCost = effVarCost
   }
@@ -23,12 +23,15 @@ effVarCost queryV effV= case (queryV, effV) of
            | qv == ev                      -> -1
            | qv `T.isInfixOf` ev           -> 0
            | otherwise                     -> 2
-  (TypedEffVar qv qtp, TypedEffVar ev etp)
-           | qv == ev && qtp == etp        -> -2
-           | qtp == etp                    -> -1
+  (TypedEffVar qv [qtp], TypedEffVar ev etps)
+           | qv == ev && qtp `elem` etps   -> -2
+           | qtp `elem` etps               -> -1
            | qv == ev                      -> 0
            | qv `T.isInfixOf` ev           -> 1
            | otherwise                     -> 2
+  -- Eventually, we may add support for this, but it's better to explicitly fail for now
+  (TypedEffVar qv _, TypedEffVar _ _) -> 
+    error "query effvar has more than one type (this shouldn't happen)"
   (QuotEffVar qv qeff, QuotEffVar ev eeff) ->
     let c = cost qeff eeff
      in if | qv == ev && c <= 0            -> c - 2
