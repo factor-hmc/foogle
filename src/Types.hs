@@ -34,6 +34,7 @@ effVarName :: EffVar a -> a
 effVarName (EffVar a) = a
 effVarName (TypedEffVar a _) = a
 effVarName (QuotEffVar a _) = a
+effVarName (AnnotatedEffVar a _) = a
 
 -- | Datatype representing a stack effect in Factor.
 data Effect a
@@ -81,11 +82,13 @@ overEffVars f Effect{..} = Effect
 
 instance Show (EffVar Text) where
   show (EffVar v) = T.unpack v
-  show (TypedEffVar v [t]) = T.unpack v <> ": " <> T.unpack t
+  show (TypedEffVar v [t])   = T.unpack v <> ": " <> T.unpack t
   -- This isn't valid factor syntax, but is useful for us humans
   -- since there are many types we could have assigned to this var
-  show (TypedEffVar v ts) = T.unpack v <> ": (" <> intercalate " | " (map T.unpack ts) <> ")"
-  show (QuotEffVar v eff) = T.unpack v <> ": " <> show eff
+  show (TypedEffVar v ts)    = T.unpack v <> ": (" <> intercalate " | " (map T.unpack ts) <> ")"
+  show (QuotEffVar v eff)    = T.unpack v <> ": " <> show eff
+  -- Ignore the effect for this
+  show (AnnotatedEffVar v _) = T.unpack v
 
 instance Show (Effect Text) where
   show Effect{..} = concat
