@@ -122,7 +122,6 @@ instance FromJSON (EffVar Text) where
 instance FromJSON (Effect Text) where
   parseJSON = withObject "stack effect" $ \o -> do
     (effVarDescriptions :: Map Text Text)  <- o .:? "effect_descriptions" .!= M.empty
-    let effVarDescriptions = M.empty
     effIn              <- map (addDescription effVarDescriptions) <$> o .: "in"
     effOut             <- map (addDescription effVarDescriptions) <$> o .: "out"
     effTerminated      <- o .: "terminated?"

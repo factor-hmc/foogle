@@ -1,5 +1,5 @@
-USING: accessors classes hashtables help help.html help.markup io io.encodings.utf8 io.files 
-  io.streams.string json.writer kernel locals vocabs sequences words words.symbol ;
+USING: accessors assocs classes hashtables help help.html help.markup io io.encodings.utf8 io.files 
+  io.streams.string json.writer kernel locals mirrors vocabs sequences words words.symbol ;
 IN: make-database
 
 : get-effect-descriptions ( word -- docs )
@@ -19,28 +19,20 @@ IN: make-database
 
 ! makes a hashmap suitable for serialization to json
 :: mk-hm ( word -- hm )
-  word "declared-effect" word-prop :> effect
+  ! don't make into a hashtable if it has no effect
+  word "declared-effect" word-prop dup [ <mirror> >hashtable ] [ ] if :> effect
+  word get-effect-descriptions :> effect-descriptions
+  ! only set if there is an effect
+  effect [ effect-descriptions "effect_descriptions" effect set-at ] [ ] if
   word name>> :> word-name
   word topic>filename "https://docs.factorcode.org/content/" prepend :> url
   word vocabulary>> :> vocabulary
   vocabulary escape-filename "https://docs.factorcode.org/content/vocab-" prepend ".html" append :> vocabulary-url
-  ! note that this code currently drops the remaining arguments if the effect arrays have more than 2 elements
-  ! word "help" word-prop :> help-prop 
-  ! word class? word symbol? help-prop f = or or 
-  !   [ H{ } ] 
-  !   [ 0 help-prop nth dup 1 short head { $values } = 
-  !     [ 1 short tail >hashtable ]
-  !     [ drop H{ } ]
-  !     if
-  !   ]
-  !   if :> effect-descriptions
-  word get-effect-descriptions :> effect-descriptions
   H{ { "name" word-name } 
      { "effect" effect } 
      { "url" url } 
      { "vocabulary" vocabulary } 
      { "vocabulary_url" vocabulary-url } 
-     { "effect_descriptions" effect-descriptions } 
    } ;
 
 "db.json"

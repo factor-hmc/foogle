@@ -6,8 +6,9 @@ module Infer where
 import Types
 import Data.Text (Text(..))
 import qualified Data.Text as T
-import Data.Char (isDigit)
+import Data.Char (isDigit, isLetter)
 import Data.Maybe (fromMaybe)
+import Data.List (nub)
 
 -- | Remove any extraneous features of a word name 
 -- (used for inferring its type).
@@ -25,8 +26,8 @@ stripExtraneous t =
 -- (types are just 'Text'). Taken from Factor's
 -- tools.scaffold.private function 'lookup-type'.
 -- This is pretty naive.
-inferType :: Text -> Maybe Text
-inferType name = lookup (T.toLower $ stripExtraneous name)
+inferTypeFromName :: Text -> Maybe Text
+inferTypeFromName name = lookup (T.toLower $ stripExtraneous name)
   [ ("seq", "sequence")
   , ("sequence", "sequence")
   , ("array", "array")
@@ -52,15 +53,24 @@ inferType name = lookup (T.toLower $ stripExtraneous name)
   , ("n", "number")
   , ("num", "number")
   , ("number", "number")
+  , ("integer", "number")
+  , ("int", "number")
   ]
 
 -- | Infer a type for an 'EffVar' if it doesn't have one already.
 inferEffVar :: EffVar Text -> EffVar Text
-inferEffVar (EffVar v) = case inferType v of
+inferEffVar (EffVar v) = case inferTypeFromName v of
   -- We can't infer any type, so don't change it
   Nothing -> EffVar v
   -- We can infer a type, so give it the type
   Just tp -> TypedEffVar v [tp]
+inferEffVar (AnnotatedEffVar v desc) = case typesFromName <> typesFromAnn of
+  []  -> EffVar v
+  tps -> TypedEffVar v tps
+  where
+    typesFromName = maybe [] pure $ inferTypeFromName v
+    typesFromAnn  = fromMaybe [] . foldMap ((pure <$>) . inferTypeFromName) $ [T.dropAround (not . isLetter) tp | tp <- T.words desc]
+
 inferEffVar (TypedEffVar v tps) = TypedEffVar v tps
 inferEffVar (QuotEffVar v eff) = QuotEffVar v (overEffVars inferEffVar eff)
 
