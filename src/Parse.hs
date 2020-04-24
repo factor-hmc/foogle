@@ -29,7 +29,13 @@ lexeme :: Parser a -> Parser a
 lexeme = L.lexeme space1
 
 reserveds :: [String]
-reserveds = [")", "(", "--", "–", "—"]
+reserveds = [ ")"
+            , "("
+            , "--"
+            , "–"
+            , "—"
+            -- This is not used in Factor, but is included for convenience
+            , "|"]
 
 nonSpace :: Parser Text
 nonSpace = do
@@ -38,13 +44,32 @@ nonSpace = do
     then mzero
     else pure str
 
+quotVar :: Text -> Parser (EffVar Text)
+quotVar name = QuotEffVar name <$> lexeme stackEffect
+
+typedVar :: Text -> Parser (EffVar Text)
+typedVar name = do
+  -- Factor will only parse a single type in a type variable,
+  -- but we will parse a union type separated by "|", e.g.
+  --
+  --  ( numOrStr: number | string bool: boolean -- output )
+  --
+  --  It can be a little hard to read, so you can put a newline
+  --
+  --  ( numOrStr: number | string
+  --    bool:     boolean
+  --    --
+  --    output
+  --  )
+  tps <- lexeme nonSpace `sepBy1` symbol "|"
+  pure $ TypedEffVar name tps
+
 effectVar :: Parser (EffVar Text)
 effectVar = lexeme nonSpace >>= \effectName ->
   if ":" `T.isSuffixOf` effectName
     then
       let effectName' = T.init effectName
-      in QuotEffVar effectName' <$> try (lexeme stackEffect)
-         <|> TypedEffVar effectName' . pure <$> lexeme nonSpace
+      in try (quotVar effectName') <|> typedVar effectName'
     else
       pure $ EffVar effectName
 
