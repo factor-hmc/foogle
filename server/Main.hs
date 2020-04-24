@@ -6,6 +6,7 @@ import Data.Aeson ( eitherDecode )
 import qualified Data.ByteString.Lazy as BL
 import System.Environment ( getEnv ) 
 
+import Infer ( infer )
 import Server ( DB, mkApp )
 
 -- import Network.Wai
