@@ -35,6 +35,7 @@ reserveds = [ ")"
             , "–"
             , "—"
             -- This is not used in Factor, but is included for convenience
+            , "—"
             , "|"]
 
 nonSpace :: Parser Text
