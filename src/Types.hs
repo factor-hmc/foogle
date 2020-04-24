@@ -28,7 +28,7 @@ data EffVar a
   -- ^ An effect variable that might be one of the associated types
   | QuotEffVar a (Effect a)
   -- ^ An effect variable with an associated stack effect
-  deriving (Eq)
+  deriving (Eq, Show)
 
 effVarName :: EffVar a -> a
 effVarName (EffVar a) = a
@@ -52,7 +52,7 @@ data Effect a
     , effOutVar     :: Maybe a
     -- ^ The output row polymorphic variable (or 'Nothing', if there are none)
     }
-    deriving (Eq)
+    deriving (Eq, Show)
 
 -- | Datatype representing a word in Factor.
 data FactorWord a
@@ -80,29 +80,29 @@ overEffVars f Effect{..} = Effect
   , effOutVar     = effOutVar
   }
 
-instance Show (EffVar Text) where
-  show (EffVar v) = T.unpack v
-  show (TypedEffVar v [t])   = T.unpack v <> ": " <> T.unpack t
-  -- This isn't valid factor syntax, but is useful for us humans
-  -- since there are many types we could have assigned to this var
-  show (TypedEffVar v ts)    = T.unpack v <> ": (" <> intercalate " | " (map T.unpack ts) <> ")"
-  show (QuotEffVar v eff)    = T.unpack v <> ": " <> show eff
-  -- Ignore the effect for this
-  show (AnnotatedEffVar v _) = T.unpack v
-
-instance Show (Effect Text) where
-  show Effect{..} = concat
-      [ "( "
-      , convertRowVar effInVar
-      , convertVars effIn
-      , "-- "
-      , convertRowVar effOutVar
-      , convertVars effOut
-      , ")"
-      ]
-    where
-      convertRowVar = maybe "" ((".." <>) . (<> " ")) . fmap T.unpack
-      convertVars = concatMap ((<> " ") . show)
+-- instance Show (EffVar Text) where
+--   show (EffVar v) = T.unpack v
+--   show (TypedEffVar v [t])   = T.unpack v <> ": " <> T.unpack t
+--   -- This isn't valid factor syntax, but is useful for us humans
+--   -- since there are many types we could have assigned to this var
+--   show (TypedEffVar v ts)    = T.unpack v <> ": (" <> intercalate " | " (map T.unpack ts) <> ")"
+--   show (QuotEffVar v eff)    = T.unpack v <> ": " <> show eff
+--   -- Ignore the effect for this
+--   show (AnnotatedEffVar v _) = T.unpack v
+-- 
+-- instance Show (Effect Text) where
+--   show Effect{..} = concat
+--       [ "( "
+--       , convertRowVar effInVar
+--       , convertVars effIn
+--       , "-- "
+--       , convertRowVar effOutVar
+--       , convertVars effOut
+--       , ")"
+--       ]
+--     where
+--       convertRowVar = maybe "" ((".." <>) . (<> " ")) . fmap T.unpack
+--       convertVars = concatMap ((<> " ") . show)
 
 instance Show (FactorWord Text) where
   show FactorWord{..} = mconcat 

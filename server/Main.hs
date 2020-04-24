@@ -15,7 +15,8 @@ main :: IO ()
 main = do
   port <- read <$> getEnv "PORT"
   withDB $ \db -> 
-    run port (mkApp db)
+    let inferredDB = map infer db
+     in run port (mkApp inferredDB)
 
 withDB :: (DB -> IO ()) -> IO ()
 withDB f = do
