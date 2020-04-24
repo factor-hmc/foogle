@@ -66,7 +66,7 @@ inferEffVar (EffVar v) = case inferTypeFromName v of
   Just tp -> TypedEffVar v [tp]
 inferEffVar (AnnotatedEffVar v desc) = case typesFromName <> typesFromAnn of
   []  -> EffVar v
-  tps -> TypedEffVar v tps
+  tps -> TypedEffVar v (nub tps)
   where
     typesFromName = maybe [] pure $ inferTypeFromName v
     typesFromAnn  = fromMaybe [] . foldMap ((pure <$>) . inferTypeFromName) $ [T.dropAround (not . isLetter) tp | tp <- T.words desc]
